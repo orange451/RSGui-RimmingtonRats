@@ -1,28 +1,22 @@
 package scripts.rimmingtonrats;
-import java.awt.Color;
 import java.awt.Graphics;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 
 import org.tribot.api2007.Camera;
 import org.tribot.api2007.Combat;
 import org.tribot.api2007.NPCs;
 import org.tribot.api2007.Player;
-import org.tribot.api2007.WebWalking;
 import org.tribot.api2007.types.RSNPC;
 import org.tribot.script.Script;
 import org.tribot.script.ScriptManifest;
-import org.tribot.script.interfaces.EventBlockingOverride;
 import org.tribot.script.interfaces.Painting;
 
 import scripts.gui.RSGuiFrame;
 import scripts.gui.font.ChatColor;
 import scripts.gui.font.RSFont;
 import scripts.util.AntiBan;
-import scripts.util.BotTask;
-import scripts.util.BotTaskWalk;
 import scripts.util.Locations;
 import scripts.util.Navigation;
 
@@ -33,6 +27,33 @@ public class RimmingtonRats extends Script implements Painting {
 	private long attackingTimeOut = System.currentTimeMillis();
 	private Locations loc = Locations.RIMMINGTON_RATS;
 	private long afkTime;
+
+	private RSNPC[] getClosestNPCS() {
+		ArrayList<RSNPC> ret = new ArrayList<RSNPC>();
+		// Get all NPCs
+		RSNPC[] npcs = NPCs.getAll();
+		for (int i = 0; i < npcs.length; i++) {
+			RSNPC npc = npcs[i];
+			if ( npc != null && npc.getName() != null ) {
+				ret.add(npcs[i]);
+			}
+		}
+		Collections.sort(ret, new Comparator<RSNPC>() {
+
+			@Override
+			public int compare(RSNPC o1, RSNPC o2) {
+				return o1.getPosition().distanceTo(Player.getPosition()) < o2.getPosition().distanceTo(Player.getPosition()) ? -1 : 1;
+			}
+
+		});
+
+		RSNPC[] ret2 = new RSNPC[ret.size()];
+		for (int i = 0; i < ret.size(); i++) {
+			ret2[i] = ret.get(i);
+		}
+
+		return ret2;
+	}
 
 	@Override
 	public void run() {
@@ -48,22 +69,13 @@ public class RimmingtonRats extends Script implements Painting {
 				continue;
 			}
 
-
 			// Randomly go afk. Max time is 40 seconds.
-			int randomAFK = (int) (Math.pow( Math.random() * Math.random(), 8 ) * 40000);
-			if ( afkTime - System.currentTimeMillis() < 0 ) {
-				afkTime = System.currentTimeMillis() + randomAFK;
-			} else {
-				AntiBan.timedActions();
-				continue;
-			}
-
+			AntiBan.afk( 60000 );
 
 			// Reset our target if it dies.
 			if ( attacking != null && attacking.getHealth() <= 0 || ( System.currentTimeMillis() - attackingTimeOut > 1000 * 30 )) {
 				attacking = null;
 			}
-
 
 			// If we're not under attack
 			if ( !Combat.isUnderAttack() && attacking == null ) {
@@ -72,36 +84,32 @@ public class RimmingtonRats extends Script implements Painting {
 				if ( loc.contains(Player.getPosition()) ) {
 
 					// Get all NPCs
-					RSNPC[] npcs = NPCs.getAll();
+					RSNPC[] npcs = getClosestNPCS();
 					for (int i = 0; i < npcs.length; i++) {
 						RSNPC npc = npcs[i];
 
-						// If it's an existent NPC (NOT NULL)
-						if ( npc != null && npc.getName() != null ) {
+						// If it's a Rat
+						if ( npc != null && npc.getName() != null && npc.getName().equals("Rat")) {
 
-							// If it's a Rat
-							if ( npc.getName().equals("Rat")) {
+							// If no one else is attacking it
+							if ( !npc.isInCombat() ) {
 
-								// If no one else is attacking it
-								if ( !npc.isInCombat() ) {
+								// Attack it
+								if ( npc.click("Attack") ) {
+									attackingTimeOut = System.currentTimeMillis();
+									attacking = npc;
 
-									// Attack it
-									if ( npc.click("Attack") ) {
-										attackingTimeOut = System.currentTimeMillis();
-										attacking = npc;
+									// Sometimes rotate to rat.
+									if ( (int)(Math.random() * 4) == 2 )
+										Camera.turnToTile(attacking.getPosition());
 
-										// Sometimes rotate to rat.
-										if ( (int)(Math.random() * 4) == 2 )
-											Camera.turnToTile(attacking.getPosition());
+									// Sleep a little bit while we attack
+									sleep( 500 + (int)(Math.random() * 3000) );
 
-										// Sleep a little bit while we attack
-										sleep( 500 + (int)(Math.random() * 3000) );
-
-										break;
-									} else {
-										// Keep trying to click it if we failed.
-										sleep( 200 + (int)(Math.random() * 400) );
-									}
+									break;
+								} else {
+									// Keep trying to click it if we failed.
+									sleep( 200 + (int)(Math.random() * 400) );
 								}
 							}
 						}
