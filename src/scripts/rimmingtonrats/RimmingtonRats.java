@@ -17,8 +17,8 @@ import scripts.gui.RSGuiFrame;
 import scripts.gui.font.ChatColor;
 import scripts.gui.font.RSFont;
 import scripts.util.AntiBan;
-import scripts.util.Locations;
-import scripts.util.Navigation;
+import scripts.util.names.Locations;
+import scripts.util.player.Navigation;
 
 @ScriptManifest(authors = { "orange451" }, category = "Combat", name = "Rimmington Rats", version = 1.00, description = "Kill rats in Rimmington!", gameMode = 1)
 public class RimmingtonRats extends Script implements Painting {
